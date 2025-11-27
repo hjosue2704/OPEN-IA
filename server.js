@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fetch = require('node-fetch');
 require('dotenv').config();
 
 const app = express();
@@ -21,11 +22,20 @@ app.post('/api/chat', async (req, res) => {
         const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
         const systemPrompt = process.env.SYSTEM_PROMPT || 'Eres un asistente de voz amigable y conversacional. Responde de manera natural, breve y en español. Mantén las respuestas concisas ya que serán leídas en voz alta.';
 
+        console.log('📥 Request recibido:', { 
+            hasMessage: !!message, 
+            hasApiKey: !!apiKey,
+            apiKeyLength: apiKey ? apiKey.length : 0,
+            model 
+        });
+
         if (!apiKey) {
+            console.error('❌ API key no configurada');
             return res.status(500).json({ error: 'API key no configurada en el servidor' });
         }
 
         if (!message) {
+            console.error('❌ Mensaje faltante');
             return res.status(400).json({ error: 'Mensaje requerido' });
         }
 
@@ -37,6 +47,7 @@ app.post('/api/chat', async (req, res) => {
         ];
 
         // Llamar a OpenAI API
+        console.log('🔄 Llamando a OpenAI API...');
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -51,8 +62,11 @@ app.post('/api/chat', async (req, res) => {
             })
         });
 
+        console.log('📡 Respuesta de OpenAI:', response.status, response.statusText);
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            console.error('❌ Error de OpenAI:', errorData);
             let errorMessage = 'Error al procesar la solicitud';
             
             if (response.status === 401) {
@@ -71,6 +85,7 @@ app.post('/api/chat', async (req, res) => {
 
         const data = await response.json();
         const botResponse = data.choices[0].message.content.trim();
+        console.log('✅ Respuesta exitosa de OpenAI');
 
         res.json({ 
             response: botResponse,
@@ -79,7 +94,12 @@ app.post('/api/chat', async (req, res) => {
 
     } catch (error) {
         console.error('Error en /api/chat:', error);
-        res.status(500).json({ error: 'Error interno del servidor', details: error.message });
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ 
+            error: 'Error interno del servidor', 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 
