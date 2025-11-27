@@ -3,6 +3,7 @@ let recognition = null;
 let isListening = false;
 let autoSpeak = true;
 let conversationHistory = []; // Historial de conversación para contexto
+let responseLanguage = 'es'; // Idioma de respuesta por defecto
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
@@ -87,6 +88,7 @@ function setupEventListeners() {
     const micButton = document.getElementById('micButton');
     const autoSpeakCheckbox = document.getElementById('autoSpeak');
     const voiceSelect = document.getElementById('voiceSelect');
+    const languageSelect = document.getElementById('languageSelect');
 
     micButton.addEventListener('click', toggleListening);
     autoSpeakCheckbox.addEventListener('change', (e) => {
@@ -94,6 +96,9 @@ function setupEventListeners() {
     });
     voiceSelect.addEventListener('change', () => {
         // La voz se aplicará en la próxima síntesis
+    });
+    languageSelect.addEventListener('change', (e) => {
+        responseLanguage = e.target.value;
     });
 }
 
@@ -152,6 +157,17 @@ function addMessage(text, type) {
 
 // Procesar entrada del usuario con OpenAI (a través del backend)
 async function processUserInput(input) {
+    const lowerInput = input.toLowerCase().trim();
+    
+    // Detectar si el usuario quiere traducir algo
+    if (lowerInput.startsWith('traduce ') || lowerInput.startsWith('translate ')) {
+        const textToTranslate = input.replace(/^(traduce|translate)\s+/i, '').trim();
+        if (textToTranslate) {
+            await translateText(textToTranslate);
+            return;
+        }
+    }
+    
     // Mostrar indicador de carga
     updateUI('Pensando...', false);
     
@@ -198,6 +214,40 @@ async function processUserInput(input) {
     }
 }
 
+// Traducir texto
+async function translateText(text) {
+    updateUI('Traduciendo...', false);
+    
+    try {
+        const response = await fetch('/api/translate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                targetLanguage: responseLanguage
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Error al traducir');
+        }
+
+        const data = await response.json();
+        const translatedText = data.translation;
+        
+        addMessage(`Traducción: ${translatedText}`, 'bot');
+        if (autoSpeak) {
+            speak(translatedText);
+        }
+    } catch (error) {
+        console.error('Error al traducir:', error);
+        addMessage('Error al traducir el texto. Intenta de nuevo.', 'bot');
+        updateUI('Error al traducir', false);
+    }
+}
+
 // Llamar al backend (que protege la API key)
 async function callBackendAPI(userMessage) {
     // Determinar la URL del backend (mismo origen si está en el mismo servidor)
@@ -210,7 +260,8 @@ async function callBackendAPI(userMessage) {
         },
         body: JSON.stringify({
             message: userMessage,
-            conversationHistory: conversationHistory
+            conversationHistory: conversationHistory,
+            responseLanguage: responseLanguage
         })
     });
 

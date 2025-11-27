@@ -17,10 +17,26 @@ app.use(express.static('public')); // Servir archivos estáticos desde la carpet
 // Ruta para procesar mensajes con OpenAI
 app.post('/api/chat', async (req, res) => {
     try {
-        const { message, conversationHistory } = req.body;
+        const { message, conversationHistory, responseLanguage } = req.body;
         const apiKey = process.env.OPENAI_API_KEY;
         const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
-        const systemPrompt = process.env.SYSTEM_PROMPT || 'Eres un asistente de voz amigable y conversacional. Responde de manera natural, breve y en español. Mantén las respuestas concisas ya que serán leídas en voz alta.';
+        
+        // Mapeo de códigos de idioma a nombres
+        const languageNames = {
+            'es': 'español',
+            'en': 'inglés',
+            'fr': 'francés',
+            'de': 'alemán',
+            'it': 'italiano',
+            'pt': 'portugués',
+            'ja': 'japonés',
+            'zh': 'chino',
+            'ru': 'ruso'
+        };
+        
+        const targetLanguage = responseLanguage || 'es';
+        const languageName = languageNames[targetLanguage] || 'español';
+        const systemPrompt = `Eres un asistente de voz amigable y conversacional. Responde de manera natural, breve y en ${languageName}. Mantén las respuestas concisas ya que serán leídas en voz alta.`;
 
         console.log('📥 Request recibido:', { 
             hasMessage: !!message, 
@@ -99,6 +115,87 @@ app.post('/api/chat', async (req, res) => {
             error: 'Error interno del servidor', 
             details: error.message,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
+// Ruta para traducir texto
+app.post('/api/translate', async (req, res) => {
+    try {
+        const { text, targetLanguage } = req.body;
+        const apiKey = process.env.OPENAI_API_KEY;
+        const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+        
+        if (!apiKey) {
+            return res.status(500).json({ error: 'API key no configurada en el servidor' });
+        }
+
+        if (!text) {
+            return res.status(400).json({ error: 'Texto requerido para traducir' });
+        }
+
+        // Mapeo de códigos de idioma a nombres
+        const languageNames = {
+            'es': 'español',
+            'en': 'inglés',
+            'fr': 'francés',
+            'de': 'alemán',
+            'it': 'italiano',
+            'pt': 'portugués',
+            'ja': 'japonés',
+            'zh': 'chino',
+            'ru': 'ruso'
+        };
+
+        const targetLang = targetLanguage || 'es';
+        const languageName = languageNames[targetLang] || 'español';
+
+        console.log(`🔄 Traduciendo a ${languageName}...`);
+
+        // Usar OpenAI para traducir
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Eres un traductor profesional. Traduce el texto proporcionado al ${languageName}. Solo devuelve la traducción, sin explicaciones adicionales.`
+                    },
+                    {
+                        role: 'user',
+                        content: `Traduce esto al ${languageName}: "${text}"`
+                    }
+                ],
+                temperature: 0.3,
+                max_tokens: 200
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ Error de OpenAI al traducir:', errorData);
+            return res.status(response.status).json({ 
+                error: 'Error al traducir',
+                details: errorData.error?.message 
+            });
+        }
+
+        const data = await response.json();
+        const translation = data.choices[0].message.content.trim();
+        console.log('✅ Traducción exitosa');
+
+        res.json({ translation });
+
+    } catch (error) {
+        console.error('Error en /api/translate:', error);
+        res.status(500).json({ 
+            error: 'Error interno del servidor', 
+            details: error.message
         });
     }
 });
