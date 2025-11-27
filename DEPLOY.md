@@ -77,10 +77,10 @@ El servidor estará disponible en `http://localhost:3000`
 
 3. **Configurar variables de entorno**:
    - En el dashboard de Railway, ve a "Variables"
-   - Agrega:
+   - Agrega **SOLO** estas variables:
      - `OPENAI_API_KEY` = tu API key
-     - `PORT` = 3000 (o déjalo vacío, Railway lo asigna automáticamente)
-     - `OPENAI_MODEL` = gpt-3.5-turbo
+     - `OPENAI_MODEL` = gpt-3.5-turbo (opcional)
+   - ⚠️ **NO agregues PORT** - Railway lo asigna automáticamente y puede causar errores
 
 4. **Deploy automático**:
    - Railway detectará automáticamente el `package.json`
@@ -101,8 +101,9 @@ El servidor estará disponible en `http://localhost:3000`
 
 3. **Configurar variables de entorno**:
    - En "Environment Variables", agrega:
-     - `OPENAI_API_KEY`
-     - `OPENAI_MODEL` (opcional)
+     - `OPENAI_API_KEY` = tu API key
+     - `OPENAI_MODEL` = gpt-3.5-turbo (opcional)
+   - ⚠️ **NO agregues PORT** - Render lo asigna automáticamente
 
 4. **Deploy**:
    - Render desplegará automáticamente
@@ -130,6 +131,7 @@ El servidor estará disponible en `http://localhost:3000`
    heroku config:set OPENAI_API_KEY=tu-api-key
    heroku config:set OPENAI_MODEL=gpt-3.5-turbo
    ```
+   ⚠️ **NO configures PORT** - Heroku lo asigna automáticamente
 
 5. **Deploy**:
    ```bash
