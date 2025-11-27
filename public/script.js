@@ -133,7 +133,11 @@ function setupEventListeners() {
     });
     realtimeTranslationCheckbox.addEventListener('change', (e) => {
         realtimeTranslation = e.target.checked;
-        sourceLanguageLabel.style.display = realtimeTranslation ? 'flex' : 'none';
+        if (realtimeTranslation) {
+            sourceLanguageLabel.classList.add('show');
+        } else {
+            sourceLanguageLabel.classList.remove('show');
+        }
         updateRecognitionLanguage();
     });
     sourceLanguageSelect.addEventListener('change', (e) => {
