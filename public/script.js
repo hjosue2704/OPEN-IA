@@ -4,6 +4,8 @@ let isListening = false;
 let autoSpeak = true;
 let conversationHistory = []; // Historial de conversación para contexto
 let responseLanguage = 'es'; // Idioma de respuesta por defecto
+let realtimeTranslation = false; // Traducción en tiempo real activada/desactivada
+let sourceLanguage = 'auto'; // Idioma de entrada (o 'auto' para detección automática)
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,6 +13,31 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSpeechSynthesis();
     setupEventListeners();
 });
+
+// Mapeo de códigos de idioma a códigos de reconocimiento de voz
+const speechRecognitionLanguages = {
+    'es': 'es-ES',
+    'en': 'en-US',
+    'fr': 'fr-FR',
+    'de': 'de-DE',
+    'it': 'it-IT',
+    'pt': 'pt-PT',
+    'ja': 'ja-JP',
+    'zh': 'zh-CN',
+    'ru': 'ru-RU',
+    'auto': 'es-ES' // Por defecto español si es auto
+};
+
+// Actualizar idioma del reconocimiento de voz
+function updateRecognitionLanguage() {
+    if (!recognition) return;
+    
+    if (realtimeTranslation && sourceLanguage !== 'auto') {
+        recognition.lang = speechRecognitionLanguages[sourceLanguage] || 'es-ES';
+    } else {
+        recognition.lang = speechRecognitionLanguages[responseLanguage] || 'es-ES';
+    }
+}
 
 // Inicializar reconocimiento de voz
 function initializeSpeechRecognition() {
@@ -22,7 +49,7 @@ function initializeSpeechRecognition() {
     }
 
     recognition = new SpeechRecognition();
-    recognition.lang = 'es-ES';
+    updateRecognitionLanguage();
     recognition.continuous = false;
     recognition.interimResults = false;
 
@@ -89,6 +116,9 @@ function setupEventListeners() {
     const autoSpeakCheckbox = document.getElementById('autoSpeak');
     const voiceSelect = document.getElementById('voiceSelect');
     const languageSelect = document.getElementById('languageSelect');
+    const realtimeTranslationCheckbox = document.getElementById('realtimeTranslation');
+    const sourceLanguageSelect = document.getElementById('sourceLanguageSelect');
+    const sourceLanguageLabel = document.getElementById('sourceLanguageLabel');
 
     micButton.addEventListener('click', toggleListening);
     autoSpeakCheckbox.addEventListener('change', (e) => {
@@ -99,6 +129,16 @@ function setupEventListeners() {
     });
     languageSelect.addEventListener('change', (e) => {
         responseLanguage = e.target.value;
+        updateRecognitionLanguage();
+    });
+    realtimeTranslationCheckbox.addEventListener('change', (e) => {
+        realtimeTranslation = e.target.checked;
+        sourceLanguageLabel.style.display = realtimeTranslation ? 'flex' : 'none';
+        updateRecognitionLanguage();
+    });
+    sourceLanguageSelect.addEventListener('change', (e) => {
+        sourceLanguage = e.target.value;
+        updateRecognitionLanguage();
     });
 }
 
@@ -137,16 +177,36 @@ function updateUI(statusText, listening) {
 }
 
 // Agregar mensaje al chat
-function addMessage(text, type) {
+function addMessage(text, type, originalText = null, translated = false) {
     const chatMessages = document.getElementById('chatMessages');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}-message`;
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
-    const p = document.createElement('p');
-    p.textContent = text;
-    contentDiv.appendChild(p);
+    
+    // Si hay texto original y está traducido, mostrar ambos
+    if (originalText && translated && originalText !== text) {
+        const originalP = document.createElement('p');
+        originalP.className = 'original-text';
+        originalP.textContent = originalText;
+        originalP.style.opacity = '0.7';
+        originalP.style.fontSize = '0.9em';
+        originalP.style.marginBottom = '5px';
+        originalP.style.fontStyle = 'italic';
+        contentDiv.appendChild(originalP);
+        
+        const translatedP = document.createElement('p');
+        translatedP.className = 'translated-text';
+        translatedP.textContent = text;
+        translatedP.style.borderTop = '1px solid rgba(0,0,0,0.1)';
+        translatedP.style.paddingTop = '5px';
+        contentDiv.appendChild(translatedP);
+    } else {
+        const p = document.createElement('p');
+        p.textContent = text;
+        contentDiv.appendChild(p);
+    }
 
     messageDiv.appendChild(contentDiv);
     chatMessages.appendChild(messageDiv);
@@ -168,23 +228,57 @@ async function processUserInput(input) {
         }
     }
     
+    let userMessage = input;
+    let translatedUserMessage = null;
+    let userMessageTranslated = false;
+    
+    // Si la traducción en tiempo real está activada, traducir el mensaje del usuario
+    if (realtimeTranslation) {
+        updateUI('Traduciendo mensaje...', false);
+        try {
+            const translationResult = await translateRealtime(input, sourceLanguage, responseLanguage);
+            if (translationResult.translated) {
+                translatedUserMessage = translationResult.translation;
+                userMessage = translatedUserMessage; // Usar el mensaje traducido para la conversación
+                userMessageTranslated = true;
+            }
+        } catch (error) {
+            console.error('Error al traducir mensaje del usuario:', error);
+            // Continuar con el mensaje original si falla la traducción
+        }
+    }
+    
+    // Mostrar mensaje del usuario (con traducción si aplica)
+    addMessage(userMessage, 'user', input, userMessageTranslated);
+    
     // Mostrar indicador de carga
     updateUI('Pensando...', false);
     
-    // Agregar mensaje del usuario al historial
+    // Agregar mensaje del usuario al historial (usar el mensaje traducido si existe)
     conversationHistory.push({
         role: 'user',
-        content: input
+        content: userMessage
     });
 
     try {
         // Llamar al backend (que llama a OpenAI)
-        const response = await callBackendAPI(input);
+        const response = await callBackendAPI(userMessage);
+        
+        let botResponse = response;
+        let botResponseTranslated = false;
+        
+        // Si la traducción en tiempo real está activada y el idioma de respuesta es diferente al de entrada
+        if (realtimeTranslation && sourceLanguage !== responseLanguage) {
+            // Si el mensaje del usuario fue traducido, la respuesta ya está en el idioma correcto
+            // Pero si el usuario habló en el idioma de respuesta, necesitamos traducir la respuesta
+            // Por ahora, asumimos que si traducimos la entrada, la respuesta ya está en el idioma correcto
+            // Solo traducimos si el idioma de respuesta es diferente al detectado en la entrada
+        }
         
         // Agregar respuesta del bot al historial
         conversationHistory.push({
             role: 'assistant',
-            content: response
+            content: botResponse
         });
 
         // Limitar el historial a las últimas 10 interacciones para no exceder tokens
@@ -193,9 +287,9 @@ async function processUserInput(input) {
         }
 
         // Mostrar respuesta
-        addMessage(response, 'bot');
+        addMessage(botResponse, 'bot');
         if (autoSpeak) {
-            speak(response);
+            speak(botResponse);
         }
     } catch (error) {
         console.error('Error al procesar con el backend:', error);
@@ -245,6 +339,34 @@ async function translateText(text) {
         console.error('Error al traducir:', error);
         addMessage('Error al traducir el texto. Intenta de nuevo.', 'bot');
         updateUI('Error al traducir', false);
+    }
+}
+
+// Traducir en tiempo real con detección de idioma
+async function translateRealtime(text, sourceLang, targetLang) {
+    try {
+        const response = await fetch('/api/translate-realtime', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                sourceLanguage: sourceLang,
+                targetLanguage: targetLang
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Error al traducir en tiempo real');
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error en traducción en tiempo real:', error);
+        throw error;
     }
 }
 

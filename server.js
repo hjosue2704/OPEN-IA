@@ -200,6 +200,143 @@ app.post('/api/translate', async (req, res) => {
     }
 });
 
+// Ruta para traducción en tiempo real con detección de idioma
+app.post('/api/translate-realtime', async (req, res) => {
+    try {
+        const { text, sourceLanguage, targetLanguage } = req.body;
+        const apiKey = process.env.OPENAI_API_KEY;
+        const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+        
+        if (!apiKey) {
+            return res.status(500).json({ error: 'API key no configurada en el servidor' });
+        }
+
+        if (!text) {
+            return res.status(400).json({ error: 'Texto requerido para traducir' });
+        }
+
+        // Mapeo de códigos de idioma a nombres
+        const languageNames = {
+            'es': 'español',
+            'en': 'inglés',
+            'fr': 'francés',
+            'de': 'alemán',
+            'it': 'italiano',
+            'pt': 'portugués',
+            'ja': 'japonés',
+            'zh': 'chino',
+            'ru': 'ruso',
+            'auto': 'detectar automáticamente'
+        };
+
+        const targetLang = targetLanguage || 'es';
+        const sourceLang = sourceLanguage || 'auto';
+        const targetLanguageName = languageNames[targetLang] || 'español';
+        
+        let detectedLanguage = sourceLang;
+        let sourceLanguageName = languageNames[sourceLang] || 'detectar automáticamente';
+
+        // Si el idioma de origen es 'auto', detectarlo primero
+        if (sourceLang === 'auto') {
+            console.log('🔍 Detectando idioma...');
+            const detectResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'Eres un detector de idiomas. Analiza el texto y responde SOLO con el código de idioma ISO 639-1 (es, en, fr, de, it, pt, ja, zh, ru). Si no puedes detectarlo, responde "es".'
+                        },
+                        {
+                            role: 'user',
+                            content: `¿Qué idioma es este texto? "${text}"`
+                        }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 10
+                })
+            });
+
+            if (detectResponse.ok) {
+                const detectData = await detectResponse.json();
+                detectedLanguage = detectData.choices[0].message.content.trim().toLowerCase();
+                sourceLanguageName = languageNames[detectedLanguage] || detectedLanguage;
+                console.log(`✅ Idioma detectado: ${sourceLanguageName} (${detectedLanguage})`);
+            }
+        }
+
+        // Si el idioma detectado es el mismo que el objetivo, no traducir
+        if (detectedLanguage === targetLang) {
+            return res.json({ 
+                translation: text,
+                originalText: text,
+                sourceLanguage: detectedLanguage,
+                targetLanguage: targetLang,
+                translated: false
+            });
+        }
+
+        console.log(`🔄 Traduciendo de ${sourceLanguageName} a ${targetLanguageName}...`);
+
+        // Traducir el texto
+        const translateResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Eres un traductor profesional. Traduce el texto del ${sourceLanguageName} al ${targetLanguageName}. Solo devuelve la traducción, sin explicaciones adicionales, sin comillas, sin prefijos.`
+                    },
+                    {
+                        role: 'user',
+                        content: `Traduce este texto del ${sourceLanguageName} al ${targetLanguageName}: "${text}"`
+                    }
+                ],
+                temperature: 0.3,
+                max_tokens: 300
+            })
+        });
+
+        if (!translateResponse.ok) {
+            const errorData = await translateResponse.json().catch(() => ({}));
+            console.error('❌ Error de OpenAI al traducir:', errorData);
+            return res.status(translateResponse.status).json({ 
+                error: 'Error al traducir',
+                details: errorData.error?.message 
+            });
+        }
+
+        const translateData = await translateResponse.json();
+        const translation = translateData.choices[0].message.content.trim().replace(/^["']|["']$/g, '');
+        console.log('✅ Traducción en tiempo real exitosa');
+
+        res.json({ 
+            translation,
+            originalText: text,
+            sourceLanguage: detectedLanguage,
+            targetLanguage: targetLang,
+            translated: true
+        });
+
+    } catch (error) {
+        console.error('Error en /api/translate-realtime:', error);
+        res.status(500).json({ 
+            error: 'Error interno del servidor', 
+            details: error.message
+        });
+    }
+});
+
 // Ruta de salud para verificar que el servidor está funcionando
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Servidor funcionando correctamente' });
