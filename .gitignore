@@ -1,0 +1,22 @@
+# Archivos de configuración con API keys (NO subir al repositorio)
+config.js
+.env
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node modules
+node_modules/
+

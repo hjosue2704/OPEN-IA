@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot de Voz Interactivo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Bot de Voz Interactivo</h1>
+            <p class="subtitle">Habla con el bot usando tu voz</p>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">
+                    <div class="message-content">
+                        <p>¡Hola! Soy tu asistente de voz con inteligencia artificial. Haz clic en el botón de micrófono para comenzar a hablar conmigo.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="micButton" class="mic-button" title="Clic para hablar">
+                <span class="mic-icon">🎤</span>
+            </button>
+            <div class="status" id="status">Listo para escuchar</div>
+        </div>
+
+        <div class="settings">
+            <label>
+                <input type="checkbox" id="autoSpeak" checked>
+                Respuesta automática por voz
+            </label>
+            <label>
+                <select id="voiceSelect">
+                    <option value="">Voz predeterminada</option>
+                </select>
+            </label>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
