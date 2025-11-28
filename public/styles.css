@@ -1,31 +1,41 @@
+/* =========================================== */
+/* ESTILOS CSS - styles.css */
+/* Ubicación: public/styles.css */
+/* Función: Define el diseño visual y estilos de la aplicación */
+/* =========================================== */
+
+/* Reset CSS: Elimina márgenes y padding por defecto de todos los elementos */
 * {
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    box-sizing: border-box; /* Incluye padding y border en el ancho/alto */
 }
 
+/* Estilos del cuerpo: Fondo con gradiente púrpura y centrado del contenido */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Gradiente púrpura */
+    min-height: 100vh; /* Altura mínima de toda la ventana */
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: center; /* Centra horizontalmente */
+    align-items: center; /* Centra verticalmente */
     padding: 20px;
 }
 
+/* Contenedor principal: Tarjeta blanca con sombra y bordes redondeados */
 .container {
     background: white;
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    border-radius: 20px; /* Bordes redondeados */
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); /* Sombra para efecto de elevación */
     width: 100%;
-    max-width: 800px;
-    height: 90vh;
+    max-width: 800px; /* Ancho máximo */
+    height: 90vh; /* Altura del 90% de la ventana */
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    flex-direction: column; /* Elementos apilados verticalmente */
+    overflow: hidden; /* Oculta el desbordamiento */
 }
 
+/* Encabezado: Fondo con gradiente púrpura, texto blanco centrado */
 .header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -33,21 +43,24 @@ body {
     text-align: center;
 }
 
+/* Título principal del encabezado */
 .header h1 {
     font-size: 2.5em;
     margin-bottom: 10px;
 }
 
+/* Subtítulo con opacidad reducida */
 .subtitle {
     opacity: 0.9;
     font-size: 1.1em;
 }
 
+/* Contenedor del chat: Área flexible con scroll para los mensajes */
 .chat-container {
-    flex: 1;
-    overflow-y: auto;
+    flex: 1; /* Ocupa el espacio disponible */
+    overflow-y: auto; /* Scroll vertical cuando hay muchos mensajes */
     padding: 20px;
-    background: #f5f5f5;
+    background: #f5f5f5; /* Fondo gris claro */
 }
 
 .chat-messages {
@@ -134,14 +147,15 @@ body {
     border-top-color: rgba(0, 0, 0, 0.1);
 }
 
+/* Controles: Área del botón de micrófono y estado, centrada */
 .controls {
     padding: 30px;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
+    flex-direction: column; /* Elementos apilados verticalmente */
+    align-items: center; /* Centra horizontalmente */
+    gap: 15px; /* Espacio entre elementos */
     background: white;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid #e0e0e0; /* Borde superior sutil */
 }
 
 .mic-button {
@@ -199,18 +213,19 @@ body {
     font-weight: bold;
 }
 
+/* Panel de configuración: Controles y opciones en la parte inferior */
 .settings {
     padding: 20px 30px;
-    background: #f9f9f9;
+    background: #f9f9f9; /* Fondo gris muy claro */
     border-top: 1px solid #e0e0e0;
     display: flex;
-    justify-content: flex-start;
+    justify-content: flex-start; /* Alineación a la izquierda */
     align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 20px;
-    max-height: 200px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    flex-wrap: wrap; /* Permite que los elementos se envuelvan en múltiples líneas */
+    gap: 20px; /* Espacio entre controles */
+    max-height: 200px; /* Altura máxima con scroll */
+    overflow-y: auto; /* Scroll vertical si hay muchos controles */
+    overflow-x: hidden; /* Sin scroll horizontal */
 }
 
 .settings label {

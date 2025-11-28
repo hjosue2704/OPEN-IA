@@ -1,20 +1,26 @@
-// Variables globales
-let recognition = null;
-let isListening = false;
-let autoSpeak = true;
-let conversationHistory = []; // Historial de conversación para contexto
+// ============================================
+// LÓGICA FRONTEND - script.js
+// Ubicación: public/script.js
+// Función: Maneja reconocimiento de voz, síntesis de voz, comunicación con backend y UI
+// ============================================
+
+// Variables globales: Estado de la aplicación
+let recognition = null; // Objeto de reconocimiento de voz (Web Speech API)
+let isListening = false; // Indica si el micrófono está escuchando
+let autoSpeak = true; // Si el bot debe hablar automáticamente las respuestas
+let conversationHistory = []; // Historial de conversación para mantener contexto con GPT
 let responseLanguage = 'es'; // Idioma de respuesta por defecto
 let realtimeTranslation = false; // Traducción en tiempo real activada/desactivada
 let sourceLanguage = 'auto'; // Idioma de entrada (o 'auto' para detección automática)
 
-// Inicialización
+// Inicialización: Cuando la página carga, inicializa todas las funcionalidades
 document.addEventListener('DOMContentLoaded', () => {
-    initializeSpeechRecognition();
-    initializeSpeechSynthesis();
-    setupEventListeners();
+    initializeSpeechRecognition(); // Configura el reconocimiento de voz
+    initializeSpeechSynthesis(); // Configura la síntesis de voz (TTS)
+    setupEventListeners(); // Configura los event listeners de los controles
 });
 
-// Mapeo de códigos de idioma a códigos de reconocimiento de voz
+// Mapeo de códigos de idioma ISO a códigos de reconocimiento de voz del navegador
 const speechRecognitionLanguages = {
     'es': 'es-ES',
     'en': 'en-US',
@@ -28,7 +34,7 @@ const speechRecognitionLanguages = {
     'auto': 'es-ES' // Por defecto español si es auto
 };
 
-// Actualizar idioma del reconocimiento de voz
+// Función: Actualiza el idioma del reconocimiento de voz según la configuración
 function updateRecognitionLanguage() {
     if (!recognition) return;
     
@@ -39,7 +45,7 @@ function updateRecognitionLanguage() {
     }
 }
 
-// Inicializar reconocimiento de voz
+// Función: Inicializa la API de reconocimiento de voz del navegador
 function initializeSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
@@ -82,7 +88,7 @@ function initializeSpeechRecognition() {
     };
 }
 
-// Inicializar síntesis de voz
+// Función: Inicializa la API de síntesis de voz (text-to-speech)
 function initializeSpeechSynthesis() {
     if (!('speechSynthesis' in window)) {
         showError('Tu navegador no soporta síntesis de voz.');
@@ -94,7 +100,7 @@ function initializeSpeechSynthesis() {
     speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-// Cargar voces disponibles
+// Función: Carga las voces disponibles en el sistema y las muestra en el selector
 function loadVoices() {
     const voices = speechSynthesis.getVoices();
     const voiceSelect = document.getElementById('voiceSelect');
@@ -110,7 +116,7 @@ function loadVoices() {
     });
 }
 
-// Configurar event listeners
+// Función: Configura los event listeners para todos los controles de la interfaz
 function setupEventListeners() {
     const micButton = document.getElementById('micButton');
     const autoSpeakCheckbox = document.getElementById('autoSpeak');
@@ -146,7 +152,7 @@ function setupEventListeners() {
     });
 }
 
-// Alternar escucha
+// Función: Activa o desactiva el reconocimiento de voz al hacer clic en el botón
 function toggleListening() {
     if (!recognition) {
         showError('Reconocimiento de voz no disponible.');
@@ -165,7 +171,7 @@ function toggleListening() {
     }
 }
 
-// Actualizar UI
+// Función: Actualiza la interfaz de usuario con el estado actual (texto de estado y visual del botón)
 function updateUI(statusText, listening) {
     const status = document.getElementById('status');
     const micButton = document.getElementById('micButton');
@@ -180,7 +186,7 @@ function updateUI(statusText, listening) {
     }
 }
 
-// Agregar mensaje al chat
+// Función: Añade un mensaje al chat (usuario o bot), con soporte para mostrar texto original y traducido
 function addMessage(text, type, originalText = null, translated = false) {
     const chatMessages = document.getElementById('chatMessages');
     const messageDiv = document.createElement('div');
@@ -219,7 +225,7 @@ function addMessage(text, type, originalText = null, translated = false) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Procesar entrada del usuario con OpenAI (a través del backend)
+// Función: Procesa el input del usuario - traduce si está activado, o envía al bot asistente
 async function processUserInput(input) {
     const lowerInput = input.toLowerCase().trim();
     
@@ -236,53 +242,65 @@ async function processUserInput(input) {
     let translatedUserMessage = null;
     let userMessageTranslated = false;
     
-    // Si la traducción en tiempo real está activada, traducir el mensaje del usuario
+    // Si la traducción en tiempo real está activada, solo traducir sin responder
     if (realtimeTranslation) {
         updateUI('Traduciendo mensaje...', false);
         try {
             const translationResult = await translateRealtime(input, sourceLanguage, responseLanguage);
             if (translationResult.translated) {
                 translatedUserMessage = translationResult.translation;
-                userMessage = translatedUserMessage; // Usar el mensaje traducido para la conversación
+                userMessage = translatedUserMessage;
                 userMessageTranslated = true;
             }
+            
+            // Mostrar mensaje del usuario (con traducción si aplica)
+            addMessage(userMessage, 'user', input, userMessageTranslated);
+            
+            // Si hay traducción, mostrar también el texto traducido como mensaje del bot
+            if (userMessageTranslated && translatedUserMessage) {
+                addMessage(`Traducción: ${translatedUserMessage}`, 'bot');
+                // Leer la traducción en voz alta usando el idioma de respuesta
+                if (autoSpeak) {
+                    speak(translatedUserMessage, responseLanguage);
+                }
+            } else if (translatedUserMessage) {
+                // Si no se tradujo pero hay mensaje, también leerlo
+                if (autoSpeak) {
+                    speak(translatedUserMessage, responseLanguage);
+                }
+            }
+            
+            updateUI('Listo para escuchar', false);
+            return; // Salir sin llamar al bot asistente
         } catch (error) {
             console.error('Error al traducir mensaje del usuario:', error);
-            // Continuar con el mensaje original si falla la traducción
+            addMessage('Error al traducir el mensaje. Intenta de nuevo.', 'bot');
+            updateUI('Error al traducir', false);
+            return; // Salir sin llamar al bot asistente
         }
     }
     
-    // Mostrar mensaje del usuario (con traducción si aplica)
-    addMessage(userMessage, 'user', input, userMessageTranslated);
+    // Si la traducción en tiempo real NO está activada, proceder normalmente con el bot asistente
+    // Mostrar mensaje del usuario
+    addMessage(input, 'user');
     
     // Mostrar indicador de carga
     updateUI('Pensando...', false);
     
-    // Agregar mensaje del usuario al historial (usar el mensaje traducido si existe)
+    // Agregar mensaje del usuario al historial
     conversationHistory.push({
         role: 'user',
-        content: userMessage
+        content: input
     });
 
     try {
         // Llamar al backend (que llama a OpenAI)
-        const response = await callBackendAPI(userMessage);
-        
-        let botResponse = response;
-        let botResponseTranslated = false;
-        
-        // Si la traducción en tiempo real está activada y el idioma de respuesta es diferente al de entrada
-        if (realtimeTranslation && sourceLanguage !== responseLanguage) {
-            // Si el mensaje del usuario fue traducido, la respuesta ya está en el idioma correcto
-            // Pero si el usuario habló en el idioma de respuesta, necesitamos traducir la respuesta
-            // Por ahora, asumimos que si traducimos la entrada, la respuesta ya está en el idioma correcto
-            // Solo traducimos si el idioma de respuesta es diferente al detectado en la entrada
-        }
+        const response = await callBackendAPI(input);
         
         // Agregar respuesta del bot al historial
         conversationHistory.push({
             role: 'assistant',
-            content: botResponse
+            content: response
         });
 
         // Limitar el historial a las últimas 10 interacciones para no exceder tokens
@@ -291,9 +309,9 @@ async function processUserInput(input) {
         }
 
         // Mostrar respuesta
-        addMessage(botResponse, 'bot');
+        addMessage(response, 'bot');
         if (autoSpeak) {
-            speak(botResponse);
+            speak(response);
         }
     } catch (error) {
         console.error('Error al procesar con el backend:', error);
@@ -312,7 +330,7 @@ async function processUserInput(input) {
     }
 }
 
-// Traducir texto
+// Función: Traduce texto usando el endpoint /api/translate (traducción simple)
 async function translateText(text) {
     updateUI('Traduciendo...', false);
     
@@ -346,7 +364,7 @@ async function translateText(text) {
     }
 }
 
-// Traducir en tiempo real con detección de idioma
+// Función: Traduce en tiempo real con detección automática de idioma usando /api/translate-realtime
 async function translateRealtime(text, sourceLang, targetLang) {
     try {
         const response = await fetch('/api/translate-realtime', {
@@ -374,7 +392,7 @@ async function translateRealtime(text, sourceLang, targetLang) {
     }
 }
 
-// Llamar al backend (que protege la API key)
+// Función: Llama al backend /api/chat para obtener respuesta de GPT (la API key está protegida en el servidor)
 async function callBackendAPI(userMessage) {
     // Determinar la URL del backend (mismo origen si está en el mismo servidor)
     const apiUrl = '/api/chat';
@@ -409,8 +427,9 @@ async function callBackendAPI(userMessage) {
     return data.response;
 }
 
-// Sintetizar voz
-function speak(text) {
+// Función: Convierte texto a voz usando SpeechSynthesis API del navegador
+// Parámetro opcional: lang - idioma para la síntesis (por defecto usa responseLanguage)
+function speak(text, lang = null) {
     if (!('speechSynthesis' in window)) {
         return;
     }
@@ -419,16 +438,39 @@ function speak(text) {
     speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'es-ES';
+    
+    // Usar el idioma proporcionado o el idioma de respuesta configurado
+    const targetLang = lang || responseLanguage;
+    // Mapeo de códigos de idioma a códigos de síntesis de voz
+    const synthesisLanguages = {
+        'es': 'es-ES',
+        'en': 'en-US',
+        'fr': 'fr-FR',
+        'de': 'de-DE',
+        'it': 'it-IT',
+        'pt': 'pt-PT',
+        'ja': 'ja-JP',
+        'zh': 'zh-CN',
+        'ru': 'ru-RU'
+    };
+    utterance.lang = synthesisLanguages[targetLang] || 'es-ES';
+    
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    // Aplicar voz seleccionada
+    // Aplicar voz seleccionada (si está disponible para el idioma)
     const voiceSelect = document.getElementById('voiceSelect');
     const voices = speechSynthesis.getVoices();
     if (voiceSelect.value && voices[voiceSelect.value]) {
         utterance.voice = voices[voiceSelect.value];
+    } else {
+        // Si no hay voz seleccionada, buscar una voz del idioma objetivo
+        const targetLangCode = synthesisLanguages[targetLang] || 'es-ES';
+        const voiceForLang = voices.find(v => v.lang.startsWith(targetLangCode.split('-')[0]));
+        if (voiceForLang) {
+            utterance.voice = voiceForLang;
+        }
     }
 
     utterance.onstart = () => {
@@ -447,7 +489,7 @@ function speak(text) {
     speechSynthesis.speak(utterance);
 }
 
-// Mostrar error
+// Función: Muestra un mensaje de error en el chat con estilo especial
 function showError(message) {
     const chatMessages = document.getElementById('chatMessages');
     const errorDiv = document.createElement('div');

@@ -1,20 +1,29 @@
+// ============================================
+// SERVIDOR BACKEND - server.js
+// Ubicación: raíz del proyecto
+// Función: Servidor Express que protege la API key de OpenAI y maneja las peticiones
+// ============================================
+
 // Servidor backend para proteger la API key de OpenAI
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const fetch = require('node-fetch');
-require('dotenv').config();
+const express = require('express'); // Framework web para Node.js
+const cors = require('cors'); // Permite peticiones desde el frontend
+const path = require('path'); // Manejo de rutas de archivos
+const fetch = require('node-fetch'); // Para hacer peticiones HTTP a OpenAI
+require('dotenv').config(); // Carga variables de entorno desde .env
 
 const app = express();
 // Railway asigna el PORT automáticamente, asegurarse de que sea un número entero
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public')); // Servir archivos estáticos desde la carpeta public
+// Middleware: Configuración del servidor
+app.use(cors()); // Permite peticiones cross-origin desde el navegador
+app.use(express.json()); // Parsea el cuerpo de las peticiones JSON
+app.use(express.static('public')); // Sirve archivos estáticos (HTML, CSS, JS) desde la carpeta public
 
-// Ruta para procesar mensajes con OpenAI
+// ============================================
+// ENDPOINT: /api/chat
+// Función: Procesa mensajes del usuario y obtiene respuestas de OpenAI GPT
+// ============================================
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, conversationHistory, responseLanguage } = req.body;
@@ -119,7 +128,10 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-// Ruta para traducir texto
+// ============================================
+// ENDPOINT: /api/translate
+// Función: Traduce texto a un idioma específico usando OpenAI
+// ============================================
 app.post('/api/translate', async (req, res) => {
     try {
         const { text, targetLanguage } = req.body;
@@ -200,7 +212,10 @@ app.post('/api/translate', async (req, res) => {
     }
 });
 
-// Ruta para traducción en tiempo real con detección de idioma
+// ============================================
+// ENDPOINT: /api/translate-realtime
+// Función: Traduce en tiempo real con detección automática de idioma
+// ============================================
 app.post('/api/translate-realtime', async (req, res) => {
     try {
         const { text, sourceLanguage, targetLanguage } = req.body;
@@ -337,16 +352,26 @@ app.post('/api/translate-realtime', async (req, res) => {
     }
 });
 
-// Ruta de salud para verificar que el servidor está funcionando
+// ============================================
+// ENDPOINT: /api/health
+// Función: Verifica que el servidor está funcionando (health check)
+// ============================================
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Servidor funcionando correctamente' });
 });
 
-// Servir la aplicación en la ruta raíz
+// ============================================
+// RUTA RAÍZ: /
+// Función: Sirve la aplicación HTML principal
+// ============================================
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ============================================
+// INICIO DEL SERVIDOR
+// Función: Inicia el servidor en el puerto especificado
+// ============================================
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
     console.log(`📝 Asegúrate de tener configurado OPENAI_API_KEY en el archivo .env`);

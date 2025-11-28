@@ -1,20 +1,29 @@
+<!-- =========================================== -->
+<!-- INTERFAZ HTML - index.html -->
+<!-- Ubicación: public/index.html -->
+<!-- Función: Estructura HTML de la aplicación web -->
+<!-- =========================================== -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bot de Voz Interactivo</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css"> <!-- Enlaza los estilos CSS -->
 </head>
 <body>
+    <!-- Contenedor principal de la aplicación -->
     <div class="container">
+        <!-- Encabezado con título y subtítulo -->
         <div class="header">
             <h1>🤖 Bot de Voz Interactivo</h1>
             <p class="subtitle">Habla con el bot usando tu voz</p>
         </div>
 
+        <!-- Área de chat donde se muestran los mensajes -->
         <div class="chat-container">
             <div class="chat-messages" id="chatMessages">
+                <!-- Mensaje inicial del bot -->
                 <div class="message bot-message">
                     <div class="message-content">
                         <p>¡Hola! Soy tu asistente de voz con inteligencia artificial. Haz clic en el botón de micrófono para comenzar a hablar conmigo.</p>
@@ -23,6 +32,7 @@
             </div>
         </div>
 
+        <!-- Controles principales: botón de micrófono y estado -->
         <div class="controls">
             <button id="micButton" class="mic-button" title="Clic para hablar">
                 <span class="mic-icon">🎤</span>
@@ -30,6 +40,7 @@
             <div class="status" id="status">Listo para escuchar</div>
         </div>
 
+        <!-- Panel de configuración con opciones -->
         <div class="settings">
             <label>
                 <input type="checkbox" id="autoSpeak" checked>
@@ -76,6 +87,7 @@
         </div>
     </div>
 
+    <!-- Script JavaScript que contiene toda la lógica de la aplicación -->
     <script src="script.js"></script>
 </body>
 </html>
